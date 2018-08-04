@@ -305,24 +305,16 @@ class ImageViewer(object):
             numpy_horizontal = []
             image_concate = None
             for i,image in enumerate(self.image):
-                # vis.draw_trackers(tracker_dic[i].tracks,i)
                 if not is_paused:
                     self._terminate = not self._user_fun()
                     if self._video_writer is not None:
                         self._video_writer.write(
                             cv2.resize(image, self._window_shape))
                 image = cv2.resize(image, (0, 0), None, 0.8/len(self.image), 0.8/len(self.image))
-                # print (image.shape)
-                # if i == 0:
-                #     numpy_horizontal.append(np.vstack((image, grey_3_channel)))
-                # else:
-                #     numpy_horizontal.append(np.concatenate((image, grey_3_channel), axis=1))
                 if i == 0:
                     image_concate = image
                 else:
                     image_concate = np.concatenate((image_concate,image),axis=1)
-                # cv2.imshow(
-                #     str(i), image)
             t1 = time.time()
             remaining_time = max(1, int(self._update_ms - 1e3*(t1-t0)))
             cv2.imshow("multicamera",image_concate)

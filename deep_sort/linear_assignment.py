@@ -10,7 +10,7 @@ INFTY_COST = 1e+5
 
 def min_cost_matching(
         distance_metric, max_distance, tracks, detections, track_indices=None,
-        detection_indices=None,trackId_feature_dic={},multicamera = False):
+        detection_indices=None,global_track=[],multicamera = False):
     """Solve linear assignment problem.
 
     Parameters
@@ -74,15 +74,37 @@ def min_cost_matching(
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))
-            # print (max_distance)
-            # print (cost_matrix[row, col])
-    # print (len(matches))
     return matches, unmatched_tracks, unmatched_detections
+
+
+def cross_camera_matching(distance_metric, max_distance, global_track, detections,global_id,
+    detection_indices=None):
+    if detection_indices is None:
+        detection_indices = np.arange(len(detections))
+    track_indices = np.arange(len(global_track))
+    if len(detection_indices) == 0 or len(track_indices) == 0:
+        return [], detection_indices
+    # print (global_track)
+    cost_matrix = distance_metric(global_track,detections,track_indices,detection_indices,True)
+    indices = linear_assignment(cost_matrix)
+    matches, unmatched_detections = [], []
+    for col, detection_idx in enumerate(detection_indices):
+        if col not in indices[:, 1]:
+            unmatched_detections.append(detection_idx)
+    for row, col in indices:
+        track_idx = track_indices[row]
+        detection_idx = detection_indices[col]
+        if cost_matrix[row, col] > max_distance:
+            unmatched_detections.append(detection_idx)
+        else:
+            matches.append((track_idx, detection_idx))
+    print ("num of cross camera match is {}".format(len(matches)))
+    return matches, unmatched_detections
 
 
 def matching_cascade(
         distance_metric, max_distance, cascade_depth, tracks, detections,
-        track_indices=None, detection_indices=None, track_dic = {}, index = 0, camera_num=1,trackId_feature_dic = {}):
+        track_indices=None, detection_indices=None, track_dic = {}, index = 0, camera_num=1,global_track = {}):
     """Run matching cascade.
 
     Parameters
@@ -119,8 +141,7 @@ def matching_cascade(
         * A list of unmatched detection indices.
 
     """
-    # for track in tracks:
-    #     print(track.track_id)
+
     if track_indices is None:
         track_indices = list(range(len(tracks)))
     if detection_indices is None:
@@ -136,7 +157,6 @@ def matching_cascade(
             k for k in track_indices
             if tracks[k].time_since_update == 1 + level
         ]
-        # print("track_indices {}".format(len(track_indices_l)))
         if len(track_indices_l) == 0:  # Nothing to match at this level
             continue
 
@@ -146,20 +166,7 @@ def matching_cascade(
                 track_indices_l, unmatched_detections, camera_num > 1)
         matches += matches_l
     unmatched_tracks = list(set(track_indices) - set(k for k, _ in matches))
-    # print ("num of tracks {},unmatched_tracks {},total_detections {},unmatched_detections {}, matches {}".format(len(tracks),len(unmatched_tracks),len(detections),len(unmatched_detections),len(matches)))
-    # for i in range(camera_num):
-    #     if i == index:
-    #         continue
-    #     if len(unmatched_detections) == 0:
-    #         break
-    #     track_list = track_dic[i]
-    #     # detection_indices = list(range(len(unmatched_detections)))
-    #     # track_indices = list(range(len(unmatched_tracks)))
-    #     matches_l, _, unmatched_detections = \
-    #         min_cost_matching(
-    #             distance_metric, max_distance, track_list, unmatched_detections,
-    #             track_indices, detection_indices,True)
-    #     matches += matches_l
+   
     return matches, unmatched_tracks, unmatched_detections
 
 

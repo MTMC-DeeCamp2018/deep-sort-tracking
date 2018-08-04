@@ -106,6 +106,10 @@ class Visualization(object):
             return False  # Terminate
         for i in range(camera_num):
             frame_callback(self, self.frame_idx,i,self.global_id)
+            # if i == 1:
+            #     frame_callback(self, 2*self.frame_idx,i,self.global_id)
+            # else:
+            #     frame_callback(self, self.frame_idx,i,self.global_id)
         self.frame_idx += 1
         return True
 
@@ -139,15 +143,5 @@ class Visualization(object):
             self.viewer.color = create_unique_color_uchar(track.track_id)
             self.viewer.rectangle(
                 *track.to_tlwh().astype(np.int), index,label=str(track.track_id))
-            # if index > 0:
-            #     self.viewer.rectangle(
-            #     track.to_tlwh().astype(np.int)[0]+10,track.to_tlwh().astype(np.int)[1]+10,track.to_tlwh().astype(np.int)[2], track.to_tlwh().astype(np.int)[3],index,label=str(track.track_id))
-            # print(*track.to_tlwh().astype(np.int))
-            # for trace in track.trace:
-            #     # print (trace[0])
-            #     # print (trace[1])
-            #     self.viewer.circle(trace[0],trace[1],2)
-            # self.viewer.colored_points(track.trace)
-            # self.viewer.gaussian(track.mean[:2], track.covariance[:2, :2],
-            #                      label="%d" % track.track_id)
+
 #           

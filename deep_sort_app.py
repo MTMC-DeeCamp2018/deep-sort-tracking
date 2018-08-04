@@ -12,12 +12,7 @@ from deep_sort import nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 
-# class DeepSort:
-#     def __init__(self):
-#         self.global_id = 1
-        # self.seq_info_dic = {}
-        # self.tracker_dic = {}
-        # self.trackId_feature_dic = {}
+
 
 def gather_sequence_info(sequence_dir, detection_file):
     """Gather sequence information, such as image filenames, detections,
@@ -164,11 +159,10 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     sequence_dir_list = sequence_dir.split(",")
     detection_file_list = detection_file.split(",")
     camera_num = len(sequence_dir_list)
-    # dp = DeepSort()
     seq_info_dic = {}
     tracker_dic = {}
-    trackId_feature_dic = {}
-    global_id = [1]
+    global_track = []
+    global_id = [0]
     window_title = [i for i in range(camera_num)]
     for i in range(camera_num):
         seq_info_dic[i] = gather_sequence_info(sequence_dir_list[i], detection_file_list[i])
@@ -194,7 +188,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         detections = [detections[i] for i in indices]
         # Update tracker.
         tracker_dic[index].predict()
-        tracker_dic[index].update(detections,tracker_dic,global_id,trackId_feature_dic)
+        tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
 
         # Update visualization.
         if display:
@@ -203,10 +197,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
                 image = cv2.imread(
                     seq_info_dic[i]["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
                 vis.append_image(image.copy())
-                # vis.draw_detections(detections,i)
                 vis.draw_trackers(tracker_dic[i].tracks,i)
-                # for track in tracker_dic[i].tracks:
-                    # print (*track.to_tlwh().astype(np.int))
         # Store results.
         for i in range(camera_num):
             for track in tracker_dic[i].tracks:
@@ -215,31 +206,9 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
                 bbox = track.to_tlwh()
                 results.append([
                     frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
-        # print (global_id[0])
-            # pos = track.to_tlbr()
-            # if len(track.trace) > 10:
-            #     track.trace.pop(0)
-            # track.trace.append([bbox[0]+bbox[2]/2,bbox[1]+bbox[3]])
-     
-
-    # Run tracker.
-    # visualizer_dic = {}
-    # if display:
-    #     for i in range(camera_num):
-    #         visualizer_dic[i] = visualization.Visualization(seq_info_dic[i],global_id, camera_num,update_ms=5)
-    # else:
-    #     for i in range(camera_num):
-    #         visualizer_dic[i] = visualization.NoVisualization(seq_info_dic[i])
-    # for i in range(camera_num):
-    #     visualizer_dic[i].run(frame_callback,tracker_dic,i,camera_num)
-    # visualizer_dic[0].run(frame_callback,tracker_dic,i,camera_num)
+       
     visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,update_ms=5)
     visualizer.run(frame_callback,tracker_dic,camera_num)
-        # tracker = tracker_dic[i]
-        # for track_id in tracker:
-        #     if track_id + 1 > global_id:
-        #         global_id = track_id + 1
-        #         print (dp.global_id)
 
     # Store results.
     f = open(output_file, 'w')
