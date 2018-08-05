@@ -93,7 +93,7 @@ def gather_sequence_info(sequence_dir, detection_file):
     return seq_info
 
 
-def create_detections(detection_mat, frame_idx, min_height=0):
+def create_detections(detection_mat, frame_idx, camera_index, min_height=0):
     """Create detections for given frame index from the raw detection matrix.
 
     Parameters
@@ -121,8 +121,9 @@ def create_detections(detection_mat, frame_idx, min_height=0):
         bbox, confidence, feature = row[2:6], row[6], row[10:]
         if bbox[3] < min_height:
             continue
-        detection_list.append(Detection(bbox, confidence, feature))
+        detection_list.append(Detection(bbox, confidence, feature, camera_index))
     return detection_list
+
 
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
@@ -177,7 +178,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
         # Load image and generate detections.
         detections = create_detections(
-            seq_info_dic[index]["detections"], frame_idx, min_detection_height)
+            seq_info_dic[index]["detections"], frame_idx,index, min_detection_height)
         detections = [d for d in detections if d.confidence >= min_confidence]
 
         # Run non-maxima suppression.

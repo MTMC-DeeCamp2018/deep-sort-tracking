@@ -63,7 +63,7 @@ class Track:
 
     """
 
-    def __init__(self, mean, covariance, track_id, n_init, max_age,global_id,
+    def __init__(self, mean, covariance, track_id, n_init, max_age,global_id,camera_index,
                  feature=None):
         self.mean = mean
         self.covariance = covariance
@@ -82,6 +82,7 @@ class Track:
         self._max_age = max_age
         self.global_id = global_id
         self.trace = []
+        self.camera_index = camera_index
     def to_tlwh(self):
         """Get current position in bounding box format `(top left x, top left y,
         width, height)`.
@@ -125,7 +126,7 @@ class Track:
         self.age += 1
         self.time_since_update += 1
 
-    def update(self, kf, detection):
+    def update(self, kf, detection,cross_camera = False):
         """Perform Kalman filter measurement update step and update the feature
         cache.
 
@@ -137,8 +138,9 @@ class Track:
             The associated detection.
 
         """
-        self.mean, self.covariance = kf.update(
-            self.mean, self.covariance, detection.to_xyah())
+        if cross_camera == False:
+            self.mean, self.covariance = kf.update(
+                self.mean, self.covariance, detection.to_xyah())
         self.features.append(detection.feature)
 
         self.hits += 1

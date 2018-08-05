@@ -175,11 +175,6 @@ class NearestNeighborDistanceMetric(object):
 
         """
         cost_matrix = np.zeros((len(targets), len(features)))
-        # print (len(features))
-        # print (len(global_track[0].features))
-        # print ("size of targets is {}, content is{}".format(len(targets),targets))
-         # for i, target in enumerate(targets):
-         #        cost_matrix[i, :] = self._metric(self.samples[index][target], features)
         if cross_camera == False:
             for i, target in enumerate(targets):
                 cost_matrix[i, :] = self._metric(self.samples[index][target], features)
@@ -187,13 +182,19 @@ class NearestNeighborDistanceMetric(object):
             global_samples = [None]*len(targets)
             for i in range(camera_num):
                 tracker = tracker_dic[i]
-                if i not in self.samples.keys():
+                if i not in self.samples.keys() or i == index:
                     continue
                 for j in self.samples[i].keys():
-                    global_samples[tracker.track_dic[j].global_id] = self.samples[i][j]
+                    # print ("sample keys {}, tracking dic keys {}".format(self.samples[i].keys(),tracker.track_dic.keys()))
+                    if j in tracker.track_dic.keys():
+                        global_samples[tracker.track_dic[j].global_id] = self.samples[i][j]
+            # print ("target is {}".format(targets))
             for i, target in enumerate(targets):
+                # print ("i is {},target is {}".format(i,target))
                 if not global_samples[i]:
                     cost_matrix[i, :] = 1e+5
                 else:
+                    # print ("size of global sample is {}, feature is {}".format(len(global_samples[i]),len(features)))
                     cost_matrix[i, :] = self._metric(global_samples[i], features)
+                # print ("cost distance is {}".format(cost_matrix[i,:]))
         return cost_matrix

@@ -10,7 +10,7 @@ INFTY_COST = 1e+5
 
 def min_cost_matching(
         distance_metric, max_distance, tracks, detections, track_indices=None,
-        detection_indices=None,global_track=[],multicamera = False):
+        detection_indices=None):
     """Solve linear assignment problem.
 
     Parameters
@@ -58,7 +58,8 @@ def min_cost_matching(
     # if multicamera == False:
     #     cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
     indices = linear_assignment(cost_matrix)
-
+    # print (cost_matrix)
+    # print (indices)
     matches, unmatched_tracks, unmatched_detections = [], [], []
     for col, detection_idx in enumerate(detection_indices):
         if col not in indices[:, 1]:
@@ -98,7 +99,9 @@ def cross_camera_matching(distance_metric, max_distance, global_track, detection
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))
-    print ("num of cross camera match is {}".format(len(matches)))
+    # print ("num of cross camera match is {}".format(len(matches)))
+    # for match in matches:
+        # print ("index of track is {}, track_id of track is {},index of detection is {}, detection_id is {}".format(global_track[match[0]].camera_index,global_track[match[0]].track_id,detections[match[1]].camera_index,match[1]))
     return matches, unmatched_detections
 
 
@@ -163,7 +166,7 @@ def matching_cascade(
         matches_l, _, unmatched_detections = \
             min_cost_matching(
                 distance_metric, max_distance, tracks, detections,
-                track_indices_l, unmatched_detections, camera_num > 1)
+                track_indices_l, unmatched_detections)
         matches += matches_l
     unmatched_tracks = list(set(track_indices) - set(k for k, _ in matches))
    

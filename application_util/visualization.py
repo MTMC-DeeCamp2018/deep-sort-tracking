@@ -105,11 +105,13 @@ class Visualization(object):
         if self.frame_idx > self.last_idx:
             return False  # Terminate
         for i in range(camera_num):
-            frame_callback(self, self.frame_idx,i,self.global_id)
-            # if i == 1:
-            #     frame_callback(self, 2*self.frame_idx,i,self.global_id)
-            # else:
-            #     frame_callback(self, self.frame_idx,i,self.global_id)
+            # frame_callback(self, self.frame_idx,i,self.global_id)
+            if i == 1:
+                frame_callback(self, self.frame_idx,i,self.global_id)
+                # if self.frame_idx > 100:
+                #     frame_callback(self, self.frame_idx-100,i,self.global_id)
+            else:
+                frame_callback(self, self.frame_idx,i,self.global_id)
         self.frame_idx += 1
         return True
 
@@ -140,8 +142,8 @@ class Visualization(object):
         for track in tracks:
             if not track.is_confirmed() or track.time_since_update > 0:
                 continue
-            self.viewer.color = create_unique_color_uchar(track.track_id)
+            self.viewer.color = create_unique_color_uchar(track.global_id)
             self.viewer.rectangle(
-                *track.to_tlwh().astype(np.int), index,label=str(track.track_id))
+                *track.to_tlwh().astype(np.int), index,label=str(track.global_id))
 
 #           
