@@ -92,6 +92,22 @@ def gather_sequence_info(sequence_dir, detection_file):
     }
     return seq_info
 
+def gather_video_info(video_dir,detection_file):
+    detections = None
+    if detection_file is not None:
+        detections = np.load(detection_file)
+    min_frame_idx = int(detections[:, 0].min())
+    max_frame_idx = int(detections[:, 0].max())
+    video = cv2.VideoCapture(video_dir)
+    feature_dim = detections.shape[1] - 6 if detections is not None else 0
+    seq_info = {
+        "detections": detections,
+        "video": video,
+        "min_frame_idx": min_frame_idx,
+        "max_frame_idx": max_frame_idx,
+        "feature_dim": feature_dim,
+    }
+    return seq_info
 
 def create_detections(detection_mat, frame_idx, camera_index, min_height=0):
     """Create detections for given frame index from the raw detection matrix.
@@ -128,7 +144,7 @@ def create_detections(detection_mat, frame_idx, camera_index, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display):
+        nn_budget, display,video_dir=None):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -157,23 +173,66 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         If True, show visualization of intermediate tracking results.
 
     """
-    sequence_dir_list = sequence_dir.split(",")
+    sequence_dir_list = []
+    video_dir_list = []
+    if video_dir:
+        video_dir_list = video_dir.split(",")
+    else:
+        sequence_dir_list = sequence_dir.split(",")
     detection_file_list = detection_file.split(",")
-    camera_num = len(sequence_dir_list)
+    camera_num = len(detection_file_list)
     seq_info_dic = {}
     tracker_dic = {}
     global_track = []
     global_id = [0]
-    window_title = [i for i in range(camera_num)]
     for i in range(camera_num):
-        seq_info_dic[i] = gather_sequence_info(sequence_dir_list[i], detection_file_list[i])
+        if video_dir:
+            seq_info_dic[i] = gather_video_info(video_dir_list[i],detection_file_list[i])
+        else:
+            seq_info_dic[i] = gather_sequence_info(sequence_dir_list[i], detection_file_list[i])
+    print ("initial seq_info_dic is {}".format(seq_info_dic))
     metric = nn_matching.NearestNeighborDistanceMetric(
         "cosine", max_cosine_distance, nn_budget)
     for i in range(camera_num):
         tracker_dic[i] = Tracker(metric,i,camera_num)
     results = []
 
-    def frame_callback(vis, frame_idx,index,global_id):
+    def video_frame_processing(vis,frame_idx, index, image):
+        print("Processing frame %05d" % frame_idx)
+        frame_indices = seq_info_dic[index]["detections"][:, 0].astype(np.int)
+        mask = frame_indices == frame_idx
+        detection_list = []
+        for row in seq_info_dic[index]["detections"][mask]:
+            bbox, confidence, feature = row[1:5], row[5], row[6:]
+            # if bbox[3] < min_height:
+            #     continue
+            detection_list.append(Detection(bbox, confidence, feature, index))
+        detections = [d for d in detection_list if d.confidence >= min_confidence]
+        boxes = np.array([d.tlwh for d in detections])
+        scores = np.array([d.confidence for d in detections])
+        indices = preprocessing.non_max_suppression(
+            boxes, nms_max_overlap, scores)
+        detections = [detections[i] for i in indices]
+        tracker_dic[index].predict()
+        tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
+        if display:
+            vis.reset_image()
+            for i in range(camera_num):
+                # image = cv2.imread(
+                #     image, cv2.IMREAD_COLOR)
+                vis.append_image(image.copy())
+                vis.draw_trackers(tracker_dic[i].tracks,i)
+        # Store results.
+        # for i in range(camera_num):
+        #     for track in tracker_dic[i].tracks:
+        #         if not track.is_confirmed() or track.time_since_update > 1:
+        #             continue
+        #         bbox = track.to_tlwh()
+        #         results.append([
+        #             frame_idx, track.global_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+
+
+    def frame_callback(vis, frame_idx,index):
         print("Processing frame %05d" % frame_idx)
 
         # Load image and generate detections.
@@ -206,11 +265,14 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
                     continue
                 bbox = track.to_tlwh()
                 results.append([
-                    frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
-       
-    visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,update_ms=5)
-    visualizer.run(frame_callback,tracker_dic,camera_num)
-
+                    frame_idx, track.global_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+    if video_dir == None:
+        visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,update_ms=5)
+        visualizer.run(frame_callback,tracker_dic,camera_num)
+    else:
+        # print ("seq_info_dic is {}".format(seq_info_dic))
+        visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,5,video_dir_list)
+        visualizer.run(video_frame_processing,tracker_dic,camera_num,seq_info_dic[0]["max_frame_idx"])
     # Store results.
     f = open(output_file, 'w')
     for row in results:
@@ -224,10 +286,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Deep SORT")
     parser.add_argument(
         "--sequence_dir", help="Path to MOTChallenge sequence directory",
-        default=None, required=True)
+        default=None)
     parser.add_argument(
-        "--detection_file", help="Path to custom detections.", default=None,
-        required=True)
+        "--detection_file", help="Path to custom detections.", default=None, required=True)
     parser.add_argument(
         "--output_file", help="Path to the tracking output file. This file will"
         " contain the tracking results on completion.",
@@ -252,6 +313,8 @@ def parse_args():
     parser.add_argument(
         "--display", help="Show intermediate tracking results",
         default=True, type=bool)
+    parser.add_argument(
+        "--video_dir", help="Path to camera video.", default=None)
     return parser.parse_args()
 
 
@@ -260,4 +323,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display)
+        args.max_cosine_distance, args.nn_budget, args.display,args.video_dir)

@@ -1,6 +1,7 @@
 # vim: expandtab:ts=4:sw=4
 import numpy as np
 import colorsys
+import cv2
 from .image_viewer import ImageViewer
 
 
@@ -86,20 +87,39 @@ class Visualization(object):
     This class shows tracking output in an OpenCV image viewer.
     """
 
-    def __init__(self, seq_info_list, global_id,camera_num,update_ms):
+    def __init__(self, seq_info_list, global_id,camera_num,update_ms, video_dir_list = None):
+        print ("seq_info_keys is {}".format(seq_info_list.keys()))
         seq_info = seq_info_list[0]
-        image_shape = seq_info["image_size"][::-1]
-        aspect_ratio = float(image_shape[1]) / image_shape[0]
-        image_shape = 1024, int(aspect_ratio * 1024)
-        self.viewer = ImageViewer(
-            update_ms, image_shape, "Figure %s" % seq_info["sequence_name"],camera_num)
+        if video_dir_list == None:
+            image_shape = seq_info["image_size"][::-1]
+            aspect_ratio = float(image_shape[1]) / image_shape[0]
+            image_shape = 1024, int(aspect_ratio * 1024)
+        if video_dir_list:
+            self.viewer = ImageViewer(update_ms, camera_num = camera_num)
+        else:
+            self.viewer = ImageViewer(
+                update_ms, image_shape, "Figure %s" % seq_info["sequence_name"],camera_num)
         self.viewer.thickness = 2
         self.frame_idx = seq_info["min_frame_idx"]
         self.last_idx = seq_info["max_frame_idx"]
         self.global_id = global_id
+        self.video_dir_list = video_dir_list
 
-    def run(self,frame_callback,tracker_dic,camera_num):
-        self.viewer.run(self,tracker_dic,lambda: self._update_fun(frame_callback,camera_num))
+    def run(self,frame_callback,tracker_dic,camera_num, max_frame_idx = None):
+        if self.video_dir_list:
+            frame_idx = 1
+            video_player = []
+            for i in range(camera_num):
+                video_player.append(cv2.VideoCapture(self.video_dir_list[i]))
+            while frame_idx <= max_frame_idx:
+                for i in range(camera_num):
+                    (grabbed, frame) = video_player[i].read()
+                    image = frame.copy()
+                    frame_callback(self,frame_idx,i,image)
+                    self.viewer.run(self,tracker_dic)
+                    frame_idx += 1
+        else:
+            self.viewer.run(self,tracker_dic,lambda: self._update_fun(frame_callback,camera_num))
 
     def _update_fun(self, frame_callback,camera_num):
         if self.frame_idx > self.last_idx:
@@ -107,11 +127,11 @@ class Visualization(object):
         for i in range(camera_num):
             # frame_callback(self, self.frame_idx,i,self.global_id)
             if i == 1:
-                frame_callback(self, self.frame_idx,i,self.global_id)
+                frame_callback(self, self.frame_idx,i)
                 # if self.frame_idx > 100:
                 #     frame_callback(self, self.frame_idx-100,i,self.global_id)
             else:
-                frame_callback(self, self.frame_idx,i,self.global_id)
+                frame_callback(self, self.frame_idx,i)
         self.frame_idx += 1
         return True
 
