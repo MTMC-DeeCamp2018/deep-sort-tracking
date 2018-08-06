@@ -88,7 +88,7 @@ class Visualization(object):
     """
 
     def __init__(self, seq_info_list, global_id,camera_num,update_ms, video_dir_list = None):
-        print ("seq_info_keys is {}".format(seq_info_list.keys()))
+        # print ("seq_info_keys is {}".format(seq_info_list.keys()))
         seq_info = seq_info_list[0]
         if video_dir_list == None:
             image_shape = seq_info["image_size"][::-1]
@@ -116,8 +116,8 @@ class Visualization(object):
                     (grabbed, frame) = video_player[i].read()
                     image = frame.copy()
                     frame_callback(self,frame_idx,i,image)
-                    self.viewer.run(self,tracker_dic)
-                    frame_idx += 1
+                self.viewer.run(self,tracker_dic)
+                frame_idx += 1
         else:
             self.viewer.run(self,tracker_dic,lambda: self._update_fun(frame_callback,camera_num))
 
@@ -165,5 +165,6 @@ class Visualization(object):
             self.viewer.color = create_unique_color_uchar(track.global_id)
             self.viewer.rectangle(
                 *track.to_tlwh().astype(np.int), index,label=str(track.global_id))
+
 
 #           

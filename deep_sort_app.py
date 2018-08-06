@@ -144,7 +144,7 @@ def create_detections(detection_mat, frame_idx, camera_index, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display,video_dir=None):
+        nn_budget, display,video_dir=None,max_age=None):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -194,7 +194,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     metric = nn_matching.NearestNeighborDistanceMetric(
         "cosine", max_cosine_distance, nn_budget)
     for i in range(camera_num):
-        tracker_dic[i] = Tracker(metric,i,camera_num)
+        tracker_dic[i] = Tracker(metric,i,camera_num,max_age=max_age)
     results = []
 
     def video_frame_processing(vis,frame_idx, index, image):
@@ -315,6 +315,8 @@ def parse_args():
         default=True, type=bool)
     parser.add_argument(
         "--video_dir", help="Path to camera video.", default=None)
+    parser.add_argument(
+        "--max_age", help="Maximum time interval for a pedestrian disappears.", default=500)
     return parser.parse_args()
 
 
@@ -323,4 +325,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display,args.video_dir)
+        args.max_cosine_distance, args.nn_budget, args.display,args.video_dir, args.max_age)
