@@ -216,12 +216,10 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         tracker_dic[index].predict()
         tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
         if display:
-            vis.reset_image()
-            for i in range(camera_num):
-                # image = cv2.imread(
-                #     image, cv2.IMREAD_COLOR)
-                vis.append_image(image.copy())
-                vis.draw_trackers(tracker_dic[i].tracks,i)
+            if index == 0:
+                vis.reset_image()
+            vis.append_image(image.copy())
+            vis.draw_trackers(tracker_dic[index].tracks,index)
         # Store results.
         # for i in range(camera_num):
         #     for track in tracker_dic[i].tracks:
@@ -252,20 +250,20 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
         # Update visualization.
         if display:
-            vis.reset_image()
-            for i in range(camera_num):
-                image = cv2.imread(
-                    seq_info_dic[i]["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
-                vis.append_image(image.copy())
-                vis.draw_trackers(tracker_dic[i].tracks,i)
+            if index == 0:
+                vis.reset_image()
+            image = cv2.imread(
+                seq_info_dic[index]["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
+            vis.append_image(image.copy())
+            vis.draw_trackers(tracker_dic[index].tracks,index)
         # Store results.
-        for i in range(camera_num):
-            for track in tracker_dic[i].tracks:
-                if not track.is_confirmed() or track.time_since_update > 1:
-                    continue
-                bbox = track.to_tlwh()
-                results.append([
-                    frame_idx, track.global_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+        # for i in range(camera_num):
+        #     for track in tracker_dic[i].tracks:
+        #         if not track.is_confirmed() or track.time_since_update > 1:
+        #             continue
+        #         bbox = track.to_tlwh()
+        #         results.append([
+        #             frame_idx, track.global_id, bbox[0], bbox[1], bbox[2], bbox[3]])
     if video_dir == None:
         visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,update_ms=5)
         visualizer.run(frame_callback,tracker_dic,camera_num)
@@ -316,7 +314,7 @@ def parse_args():
     parser.add_argument(
         "--video_dir", help="Path to camera video.", default=None)
     parser.add_argument(
-        "--max_age", help="Maximum time interval for a pedestrian disappears.", default=500)
+        "--max_age", help="Maximum time interval for a pedestrian disappears.", default=500,type=int)
     return parser.parse_args()
 
 

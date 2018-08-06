@@ -125,9 +125,9 @@ class Visualization(object):
         if self.frame_idx > self.last_idx:
             return False  # Terminate
         for i in range(camera_num):
-            # frame_callback(self, self.frame_idx,i,self.global_id)
+            # frame_callback(self, self.frame_idx,i)
             if i == 1:
-                frame_callback(self, self.frame_idx+100,i)
+                frame_callback(self, self.frame_idx+5,i)
                 # if self.frame_idx > 100:
                 #     frame_callback(self, self.frame_idx-100,i,self.global_id)
             else:
