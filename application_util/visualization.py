@@ -87,7 +87,7 @@ class Visualization(object):
     This class shows tracking output in an OpenCV image viewer.
     """
 
-    def __init__(self, seq_info_list, global_id,camera_num,update_ms, video_dir_list = None):
+    def __init__(self, seq_info_list, global_id,camera_num,update_ms, last_frame,video_dir_list = None):
         # print ("seq_info_keys is {}".format(seq_info_list.keys()))
         seq_info = seq_info_list[0]
         if video_dir_list == None:
@@ -101,7 +101,7 @@ class Visualization(object):
                 update_ms, image_shape, "Figure %s" % seq_info["sequence_name"],camera_num)
         self.viewer.thickness = 2
         self.frame_idx = seq_info["min_frame_idx"]
-        self.last_idx = seq_info["max_frame_idx"]
+        self.last_idx = last_frame
         self.global_id = global_id
         self.video_dir_list = video_dir_list
 
@@ -113,6 +113,8 @@ class Visualization(object):
                 video_player.append(cv2.VideoCapture(self.video_dir_list[i]))
             while frame_idx <= max_frame_idx:
                 for i in range(camera_num):
+                    if frame_idx > self.last_idx[i]:
+                        continue
                     (grabbed, frame) = video_player[i].read()
                     image = frame.copy()
                     frame_callback(self,frame_idx,i,image)
@@ -122,12 +124,14 @@ class Visualization(object):
             self.viewer.run(self,tracker_dic,lambda: self._update_fun(frame_callback,camera_num))
 
     def _update_fun(self, frame_callback,camera_num):
-        if self.frame_idx > self.last_idx:
-            return False  # Terminate
+        # if self.frame_idx > self.last_idx:
+        #     return False  # Terminate
         for i in range(camera_num):
+            if self.frame_idx > self.last_idx[i]:
+                continue
             # frame_callback(self, self.frame_idx,i)
             if i == 1:
-                frame_callback(self, self.frame_idx+5,i)
+                frame_callback(self, self.frame_idx+20,i)
                 # if self.frame_idx > 100:
                 #     frame_callback(self, self.frame_idx-100,i,self.global_id)
             else:
@@ -160,6 +164,8 @@ class Visualization(object):
     def draw_trackers(self, tracks,index):
         self.viewer.thickness = 2
         for track in tracks:
+            # print ("the feature of current track is {}".format(track.features))
+            print ("the coordinates of current track is {}".format(track.to_tlwh()))
             if not track.is_confirmed() or track.time_since_update > 0:
                 continue
             self.viewer.color = create_unique_color_uchar(track.global_id)

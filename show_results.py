@@ -74,9 +74,9 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
         update_ms = seq_info["update_ms"]
     if update_ms is None:
         update_ms = DEFAULT_UPDATE_MS
-    visualizer = visualization.Visualization(seq_info, update_ms)
+    visualizer = visualization.Visualization(seq_info, update_ms,seq_info_dic)
     if video_filename is not None:
-        visualizer.viewer.enable_videowriter(video_filename)
+        visualizer.viewer.enable_videowriter(video_filename,seq_info_dic)
     visualizer.run(frame_callback)
 
 

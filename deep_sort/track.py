@@ -141,6 +141,8 @@ class Track:
         if cross_camera == False:
             self.mean, self.covariance = kf.update(
                 self.mean, self.covariance, detection.to_xyah())
+        if len(self.features) >= 100:
+            self.features.pop(0)
         self.features.append(detection.feature)
 
         self.hits += 1

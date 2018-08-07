@@ -92,7 +92,7 @@ def _nn_cosine_distance(x, y):
         smallest cosine distance to a sample in `x`.
 
     """
-    distances = _cosine_distance(x, y)
+    distances = _cosine_distance(x, y, False)
     return distances.min(axis=0)
 
 
@@ -147,16 +147,19 @@ class NearestNeighborDistanceMetric(object):
             A list of targets that are currently present in the scene.
 
         """
-        # print ("successfully partial_fit {}".format(index))
+        # print ("current active targets are {}".format(active_targets))
+        print ("current features is {}".format(features))
         for feature, target in zip(features, targets):
+            # print ("size of feature is {}, feature is {}".format(len(feature),feature))
             if index not in self.samples.keys():
                 self.samples[index] = {}
             self.samples[index].setdefault(target, []).append(feature)
             if self.budget is not None:
                 self.samples[index][target] = self.samples[index][target][-self.budget:]
         self.samples[index] = {k: self.samples[index][k] for k in active_targets}
+        # print ("current samples are {}".format(self.samples[index]))
 
-    def distance(self, features, targets,index,cross_camera,global_track,camera_num,tracker_dic):
+    def distance(self, features, targets,index,cross_camera,global_track,global_id):
         """Compute distance between features and targets.
 
         Parameters
@@ -174,27 +177,20 @@ class NearestNeighborDistanceMetric(object):
             `targets[i]` and `features[j]`.
 
         """
-        cost_matrix = np.zeros((len(targets), len(features)))
+        # cost_matrix = np.zeros((len(targets), len(features)))
         if cross_camera == False:
+            cost_matrix = np.zeros((len(targets), len(features)))
             for i, target in enumerate(targets):
+                print ("samples is {}".format(self.samples[index][target][0]))
                 cost_matrix[i, :] = self._metric(self.samples[index][target], features)
         else:
+            cost_matrix = np.zeros((global_id[0], len(features)))
             global_samples = [None]*len(targets)
-            for i in range(camera_num):
-                tracker = tracker_dic[i]
-                if i not in self.samples.keys() or i == index:
-                    continue
-                for j in self.samples[i].keys():
-                    # print ("sample keys {}, tracking dic keys {}".format(self.samples[i].keys(),tracker.track_dic.keys()))
-                    if j in tracker.track_dic.keys():
-                        global_samples[tracker.track_dic[j].global_id] = self.samples[i][j]
-            # print ("target is {}".format(targets))
-            for i, target in enumerate(targets):
-                # print ("i is {},target is {}".format(i,target))
-                if not global_samples[i]:
-                    cost_matrix[i, :] = 1e+5
-                else:
-                    # print ("size of global sample is {}, feature is {}".format(len(global_samples[i]),len(features)))
-                    cost_matrix[i, :] = self._metric(global_samples[i], features)
-                # print ("cost distance is {}".format(cost_matrix[i,:]))
+            for i in range(global_id[0]):
+                for j in range(len(features)):
+                    if global_track[i].camera_index == index or global_track[i].is_confirmed() == False:
+                        cost_matrix[i][j] = 1e+5
+                    else:
+                        # print ("global track feature size is {}, feature size is{}".format(len(global_track[i].features),len(features[j])))
+                        cost_matrix[i][j] = 1. - np.dot(global_track[i].features[-1], features[j].T)
         return cost_matrix

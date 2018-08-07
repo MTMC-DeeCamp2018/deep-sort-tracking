@@ -190,11 +190,10 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             seq_info_dic[i] = gather_video_info(video_dir_list[i],detection_file_list[i])
         else:
             seq_info_dic[i] = gather_sequence_info(sequence_dir_list[i], detection_file_list[i])
-    print ("initial seq_info_dic is {}".format(seq_info_dic))
-    metric = nn_matching.NearestNeighborDistanceMetric(
-        "cosine", max_cosine_distance, nn_budget)
+    # print ("initial seq_info_dic is {}".format(seq_info_dic))
     for i in range(camera_num):
-        tracker_dic[i] = Tracker(metric,i,camera_num,max_age=max_age)
+        tracker_dic[i] = Tracker(nn_matching.NearestNeighborDistanceMetric(
+        "cosine", max_cosine_distance, nn_budget),i,camera_num,max_age=max_age)
     results = []
 
     def video_frame_processing(vis,frame_idx, index, image):
@@ -244,6 +243,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         indices = preprocessing.non_max_suppression(
             boxes, nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
+        print ("the camera_index is {}, the coordiantes of detections is {}".format(index,[detection.tlwh for detection in detections]))
         # Update tracker.
         tracker_dic[index].predict()
         tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
@@ -264,13 +264,19 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         #         bbox = track.to_tlwh()
         #         results.append([
         #             frame_idx, track.global_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+    last_frame = {}
+    max_frame_idx = 0
+    for i in range(camera_num):
+            last_frame[i] = seq_info_dic[i]["max_frame_idx"]
+            if last_frame[i] > max_frame_idx:
+                max_frame_idx = last_frame[i]
     if video_dir == None:
-        visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,update_ms=5)
-        visualizer.run(frame_callback,tracker_dic,camera_num)
+        visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,5,last_frame)
+        visualizer.run(frame_callback,tracker_dic,camera_num,max_frame_idx)
     else:
         # print ("seq_info_dic is {}".format(seq_info_dic))
-        visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,5,video_dir_list)
-        visualizer.run(video_frame_processing,tracker_dic,camera_num,seq_info_dic[0]["max_frame_idx"])
+        visualizer = visualization.Visualization(seq_info_dic,global_id, camera_num,5,last_frame,video_dir_list)
+        visualizer.run(video_frame_processing,tracker_dic,camera_num,max_frame_idx)
     # Store results.
     f = open(output_file, 'w')
     for row in results:
@@ -304,7 +310,7 @@ def parse_args():
         "detection overlap.", default=1.0, type=float)
     parser.add_argument(
         "--max_cosine_distance", help="Gating threshold for cosine distance "
-        "metric (object appearance).", type=float, default=0.2)
+        "metric (object appearance).", type=float, default=0.1)
     parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
         "gallery. If None, no budget is enforced.", type=int, default=None)

@@ -75,10 +75,13 @@ class Tracker:
             self.tracks[track_idx].update(
                 self.kf, detections[detection_idx])
         for global_track_idx, detection_idx in matches_c:
-            global_track[global_track_idx].update(self.kf,detections[detection_idx], True)
-            self.track_global_dic[global_track_idx] = global_track[global_track_idx]
-            self.tracks.append(global_track[global_track_idx])
-            self.track_dic[self._next_id] = global_track[global_track_idx]
+            mean, covariance = self.kf.initiate(detections[detection_idx].to_xyah())
+            track = Track(mean, covariance,self._next_id,self.n_init, self.max_age,global_track_idx,self.index,
+            detections[detection_idx].feature)
+            track.update(self.kf,detections[detection_idx], True)
+            self.track_global_dic[global_track_idx] = track            
+            self.tracks.append(track)
+            self.track_dic[self._next_id] = track
             self._next_id += 1
         for track_idx in unmatched_tracks:
             self.tracks[track_idx].mark_missed()
@@ -93,8 +96,9 @@ class Tracker:
             if not track.is_confirmed():
                 continue
             features += track.features
+            # print("the num of feature is {}, feature dimension is {}".format(len(features),len(features[0]))
             targets += [track.track_id for _ in track.features]
-            track.features = []
+            # track.features = []
         self.metric.partial_fit(
             np.asarray(features), np.asarray(targets), active_targets,self.index)
 
@@ -108,13 +112,12 @@ class Tracker:
                 targets = np.array([tracks[i].global_id for i in track_indices])
             else:
                 targets = np.array([tracks[i].track_id for i in track_indices])
-            cost_matrix = self.metric.distance(features, targets,self.index,cross_camera,global_track,camera_num,tracker_dic)
-            # print ("cost_matrix is {}".format(cost_matrix))
+            cost_matrix = self.metric.distance(features, targets,self.index,cross_camera,global_track,global_id)
             if cross_camera == False:
                 cost_matrix = linear_assignment.gate_cost_matrix(
                     self.kf, cost_matrix, tracks, dets, track_indices,
                     detection_indices)
-
+            print ("cost_matrix is {}".format(cost_matrix))
             return cost_matrix
 
         # Split track set into confirmed and unconfirmed tracks.
@@ -127,6 +130,7 @@ class Tracker:
             linear_assignment.matching_cascade(
                 gated_metric, self.metric.matching_threshold, self.max_age,
                 self.tracks, detections,confirmed_tracks, None,tracker_dic,self.index,camera_num,global_track)
+        # print ("initial matches are {} unmatched tracks_a are {}, unmatched_detections are {}".format(matches_a,unmatched_tracks_a,unmatched_detections))
         print ("initial matches are {}".format(matches_a))
         iou_track_candidates = unconfirmed_tracks + [
             k for k in unmatched_tracks_a if
@@ -146,12 +150,14 @@ class Tracker:
         matches_c = []
         print ("second matches are {}".format(matches_b))
         if camera_num > 1 and len(unmatched_detections) > 0:
-            matches_c, unmatched_detections_c = linear_assignment.cross_camera_matching(gated_metric, self.metric.matching_threshold, global_track, detections,global_id)
+            matches_c, unmatched_detections_c = linear_assignment.cross_camera_matching(gated_metric, self.metric.matching_threshold, global_track, detections,global_id,unmatched_detections)
             unmatched_detections = list(set(unmatched_detections)-set([i[1] for i in matches_c]))
 
             matches_detections = [i[1] for i in matches]
             matches_c = [i for i in matches_c if i[1] not in matches_detections]
             print ("cross_camera match is {}".format(matches_c))
+            for i in range(len(matches_c)):
+                print ("the distance between matches_c is {}".format(1. - np.dot(global_track[matches_c[0][0]].features[-1], detections[matches_c[0][1]].feature.T)))
         return matches, unmatched_tracks, unmatched_detections, matches_c
 
     def _initiate_track(self, detection,global_track,global_id):
