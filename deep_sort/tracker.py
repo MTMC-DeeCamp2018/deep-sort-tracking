@@ -117,7 +117,7 @@ class Tracker:
                 cost_matrix = linear_assignment.gate_cost_matrix(
                     self.kf, cost_matrix, tracks, dets, track_indices,
                     detection_indices)
-            print ("cost_matrix is {}".format(cost_matrix))
+            # print ("cost_matrix is {}".format(cost_matrix))
             return cost_matrix
 
         # Split track set into confirmed and unconfirmed tracks.
@@ -156,8 +156,8 @@ class Tracker:
             matches_detections = [i[1] for i in matches]
             matches_c = [i for i in matches_c if i[1] not in matches_detections]
             print ("cross_camera match is {}".format(matches_c))
-            for i in range(len(matches_c)):
-                print ("the distance between matches_c is {}".format(1. - np.dot(global_track[matches_c[0][0]].features[-1], detections[matches_c[0][1]].feature.T)))
+            # for i in range(len(matches_c)):
+            #     print ("the distance between matches_c is {}".format(1. - np.dot(global_track[matches_c[0][0]].features[-1], detections[matches_c[0][1]].feature.T)))
         return matches, unmatched_tracks, unmatched_detections, matches_c
 
     def _initiate_track(self, detection,global_track,global_id):

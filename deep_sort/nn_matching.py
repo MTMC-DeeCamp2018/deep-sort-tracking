@@ -48,9 +48,9 @@ def _cosine_distance(a, b, data_is_normalized=False):
         contains the squared distance between `a[i]` and `b[j]`.
 
     """
-    if not data_is_normalized:
-        a = np.asarray(a) / np.linalg.norm(a, axis=1, keepdims=True)
-        b = np.asarray(b) / np.linalg.norm(b, axis=1, keepdims=True)
+    # if not data_is_normalized:
+    #     a = np.asarray(a) / np.linalg.norm(a, axis=1, keepdims=True)
+    #     b = np.asarray(b) / np.linalg.norm(b, axis=1, keepdims=True)
     return 1. - np.dot(a, b.T)
 
 
@@ -148,7 +148,7 @@ class NearestNeighborDistanceMetric(object):
 
         """
         # print ("current active targets are {}".format(active_targets))
-        print ("current features is {}".format(features))
+        # print ("current features is {}".format(features))
         for feature, target in zip(features, targets):
             # print ("size of feature is {}, feature is {}".format(len(feature),feature))
             if index not in self.samples.keys():
@@ -177,20 +177,17 @@ class NearestNeighborDistanceMetric(object):
             `targets[i]` and `features[j]`.
 
         """
-        # cost_matrix = np.zeros((len(targets), len(features)))
         if cross_camera == False:
             cost_matrix = np.zeros((len(targets), len(features)))
             for i, target in enumerate(targets):
-                print ("samples is {}".format(self.samples[index][target][0]))
                 cost_matrix[i, :] = self._metric(self.samples[index][target], features)
         else:
             cost_matrix = np.zeros((global_id[0], len(features)))
             global_samples = [None]*len(targets)
             for i in range(global_id[0]):
-                for j in range(len(features)):
-                    if global_track[i].camera_index == index or global_track[i].is_confirmed() == False:
-                        cost_matrix[i][j] = 1e+5
-                    else:
-                        # print ("global track feature size is {}, feature size is{}".format(len(global_track[i].features),len(features[j])))
-                        cost_matrix[i][j] = 1. - np.dot(global_track[i].features[-1], features[j].T)
+                if global_track[i].camera_index == index or global_track[i].is_confirmed() == False:
+                    cost_matrix[i,:] = 1e+5
+                else:
+                    cost_matrix[i,:] = self._metric(global_track[i].features, features)
+            print (cost_matrix)
         return cost_matrix

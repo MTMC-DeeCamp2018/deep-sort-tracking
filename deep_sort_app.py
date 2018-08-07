@@ -243,7 +243,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         indices = preprocessing.non_max_suppression(
             boxes, nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
-        print ("the camera_index is {}, the coordiantes of detections is {}".format(index,[detection.tlwh for detection in detections]))
+        # print ("the camera_index is {}, the coordiantes of detections is {}".format(index,[detection.tlwh for detection in detections]))
         # Update tracker.
         tracker_dic[index].predict()
         tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
@@ -304,13 +304,13 @@ def parse_args():
     parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
-        "disregarded", default=0, type=int)
+        "disregarded", default=100, type=int)
     parser.add_argument(
         "--nms_max_overlap",  help="Non-maxima suppression threshold: Maximum "
         "detection overlap.", default=1.0, type=float)
     parser.add_argument(
         "--max_cosine_distance", help="Gating threshold for cosine distance "
-        "metric (object appearance).", type=float, default=0.1)
+        "metric (object appearance).", type=float, default=0.3)
     parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
         "gallery. If None, no budget is enforced.", type=int, default=None)

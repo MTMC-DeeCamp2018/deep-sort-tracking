@@ -165,7 +165,7 @@ class Visualization(object):
         self.viewer.thickness = 2
         for track in tracks:
             # print ("the feature of current track is {}".format(track.features))
-            print ("the coordinates of current track is {}".format(track.to_tlwh()))
+            # print ("the coordinates of current track is {}".format(track.to_tlwh()))
             if not track.is_confirmed() or track.time_since_update > 0:
                 continue
             self.viewer.color = create_unique_color_uchar(track.global_id)
