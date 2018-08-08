@@ -112,7 +112,7 @@ class Tracker:
                 targets = np.array([tracks[i].global_id for i in track_indices])
             else:
                 targets = np.array([tracks[i].track_id for i in track_indices])
-            cost_matrix = self.metric.distance(features, targets,self.index,cross_camera,global_track,global_id)
+            cost_matrix = self.metric.distance(features, targets,self.index,cross_camera,global_track,global_id, tracker_dic)
             if cross_camera == False:
                 cost_matrix = linear_assignment.gate_cost_matrix(
                     self.kf, cost_matrix, tracks, dets, track_indices,
@@ -156,8 +156,6 @@ class Tracker:
             matches_detections = [i[1] for i in matches]
             matches_c = [i for i in matches_c if i[1] not in matches_detections]
             print ("cross_camera match is {}".format(matches_c))
-            # for i in range(len(matches_c)):
-            #     print ("the distance between matches_c is {}".format(1. - np.dot(global_track[matches_c[0][0]].features[-1], detections[matches_c[0][1]].feature.T)))
         return matches, unmatched_tracks, unmatched_detections, matches_c
 
     def _initiate_track(self, detection,global_track,global_id):
@@ -170,6 +168,6 @@ class Tracker:
         self.track_dic[self._next_id] = track
         self._next_id += 1
         global_track.append(track)
-        print ("global count is {}".format(global_id[0]))
+        # print ("global count is {}".format(global_id[0]))
         global_id[0] = global_id[0]+1
 

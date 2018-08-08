@@ -131,7 +131,7 @@ class Visualization(object):
                 continue
             # frame_callback(self, self.frame_idx,i)
             if i == 1:
-                frame_callback(self, self.frame_idx+20,i)
+                frame_callback(self, self.frame_idx+100,i)
                 # if self.frame_idx > 100:
                 #     frame_callback(self, self.frame_idx-100,i,self.global_id)
             else:
@@ -168,7 +168,14 @@ class Visualization(object):
             # print ("the coordinates of current track is {}".format(track.to_tlwh()))
             if not track.is_confirmed() or track.time_since_update > 0:
                 continue
+            if len(track.trace) > 10:
+                track.trace.pop(0)
+            coordinate = track.to_tlwh()
+            # print (coordinate[0],coordinate[1],coordinate[2],coordinate[3])
+            track.trace.append([coordinate[0]+coordinate[2]/2, coordinate[1]+coordinate[3]])
             self.viewer.color = create_unique_color_uchar(track.global_id)
+            for trace in track.trace:
+                self.viewer.circle(index, trace[0], trace[1], 2)
             self.viewer.rectangle(
                 *track.to_tlwh().astype(np.int), index,label=str(track.global_id))
 

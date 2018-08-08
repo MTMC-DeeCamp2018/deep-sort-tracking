@@ -159,7 +159,7 @@ class NearestNeighborDistanceMetric(object):
         self.samples[index] = {k: self.samples[index][k] for k in active_targets}
         # print ("current samples are {}".format(self.samples[index]))
 
-    def distance(self, features, targets,index,cross_camera,global_track,global_id):
+    def distance(self, features, targets,index,cross_camera,global_track,global_id, tracker_dic):
         """Compute distance between features and targets.
 
         Parameters
@@ -185,9 +185,9 @@ class NearestNeighborDistanceMetric(object):
             cost_matrix = np.zeros((global_id[0], len(features)))
             global_samples = [None]*len(targets)
             for i in range(global_id[0]):
-                if global_track[i].camera_index == index or global_track[i].is_confirmed() == False:
+                if global_track[i].camera_index == index or i in tracker_dic[index].track_global_dic:
                     cost_matrix[i,:] = 1e+5
                 else:
                     cost_matrix[i,:] = self._metric(global_track[i].features, features)
-            print (cost_matrix)
+            # print (cost_matrix)
         return cost_matrix

@@ -99,6 +99,7 @@ def cross_camera_matching(distance_metric, max_distance, global_track, detection
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))
+            # print ("cost value is {}".format(cost_matrix[row][col]))
     # print ("num of cross camera match is {}".format(len(matches)))
     # for match in matches:
         # print ("index of track is {}, track_id of track is {},index of detection is {}, detection_id is {}".format(global_track[match[0]].camera_index,global_track[match[0]].track_id,detections[match[1]].camera_index,match[1]))

@@ -154,7 +154,7 @@ class ImageViewer(object):
             cv2.putText(self.image[index], label, center, cv2.FONT_HERSHEY_PLAIN,
                         1, (255, 255, 255), self.thickness)
 
-    def circle(self, x, y, radius, label=None):
+    def circle(self, index, x, y, radius, label=None):
         """Draw a circle.
 
         Parameters
@@ -172,16 +172,16 @@ class ImageViewer(object):
         image_size = int(radius + self.thickness + 1.5)  # actually half size
         roi = int(x - image_size), int(y - image_size), \
             int(2 * image_size), int(2 * image_size)
-        if not is_in_bounds(self.image, roi):
+        if not is_in_bounds(self.image[index], roi):
             return
 
-        image = view_roi(self.image, roi)
+        image = view_roi(self.image[index], roi)
         center = image.shape[1] // 2, image.shape[0] // 2
         cv2.circle(
             image, center, int(radius + .5), self._color, self.thickness)
         if label is not None:
             cv2.putText(
-                self.image, label, center, cv2.FONT_HERSHEY_PLAIN,
+                self.image[index], label, center, cv2.FONT_HERSHEY_PLAIN,
                 2, self.text_color, 2)
 
     def gaussian(self, mean, covariance, label=None):
