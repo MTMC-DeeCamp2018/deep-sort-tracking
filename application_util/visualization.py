@@ -3,7 +3,7 @@ import numpy as np
 import colorsys
 import cv2
 from .image_viewer import ImageViewer
-
+from . import epfl_calib
 
 def create_unique_color_float(tag, hue_step=0.41):
     """Create a unique RGB color code for a given track id (tag).
@@ -170,12 +170,15 @@ class Visualization(object):
                 continue
             if len(track.trace) > 10:
                 track.trace.pop(0)
-            coordinate = track.to_tlwh()
-            # print (coordinate[0],coordinate[1],coordinate[2],coordinate[3])
-            track.trace.append([coordinate[0]+coordinate[2]/2, coordinate[1]+coordinate[3]])
+            bbox = track.to_tlwh()
+            coordinate = [bbox[0]+bbox[2]/2, bbox[1]+bbox[3]]
+            # world_coordinate = np.array(coordinate, dtype=np.float32)
+            # world_coordinate = epfl_calib.img_to_world(world_coordinate, epfl_calib.terrace_H()[index])
+            # print ("camera_index is {}, global_track_id is {}, world_coordinate is {}".format(index,track.global_id,world_coordinate))
+            track.trace.append(coordinate)
             self.viewer.color = create_unique_color_uchar(track.global_id)
-            for trace in track.trace:
-                self.viewer.circle(index, trace[0], trace[1], 2)
+            # for trace in track.trace:
+                # self.viewer.circle(index, trace[0], trace[1], 2)
             self.viewer.rectangle(
                 *track.to_tlwh().astype(np.int), index,label=str(track.global_id))
 

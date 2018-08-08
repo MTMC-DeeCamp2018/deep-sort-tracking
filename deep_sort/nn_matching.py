@@ -1,5 +1,6 @@
 # vim: expandtab:ts=4:sw=4
 import numpy as np
+from . import epfl_calib
 
 
 def _pdist(a, b):
@@ -159,7 +160,7 @@ class NearestNeighborDistanceMetric(object):
         self.samples[index] = {k: self.samples[index][k] for k in active_targets}
         # print ("current samples are {}".format(self.samples[index]))
 
-    def distance(self, features, targets,index,cross_camera,global_track,global_id, tracker_dic):
+    def distance(self, features, coordinates,targets,index,cross_camera,global_track,global_id, tracker_dic,world_viewer_threshold=None):
         """Compute distance between features and targets.
 
         Parameters
@@ -185,9 +186,26 @@ class NearestNeighborDistanceMetric(object):
             cost_matrix = np.zeros((global_id[0], len(features)))
             global_samples = [None]*len(targets)
             for i in range(global_id[0]):
-                if global_track[i].camera_index == index or i in tracker_dic[index].track_global_dic:
+                if global_track[i].camera_index == index or i in tracker_dic[index].track_global_dic and tracker_dic[index].track_global_dic[i].is_confirmed():
                     cost_matrix[i,:] = 1e+5
                 else:
                     cost_matrix[i,:] = self._metric(global_track[i].features, features)
+                    if world_viewer_threshold:
+                        track_coordinate = global_track[i].trace[-1]
+                        track_coordinate = np.array(track_coordinate, dtype=np.float32)
+                        track_coordinate = epfl_calib.img_to_world(track_coordinate, epfl_calib.terrace_H()[global_track[i].camera_index])
+                        for j in range(len(coordinates)):
+                            detection_coordinate = [coordinates[j][0]+coordinates[j][2]/2, coordinates[j][1]+coordinates[j][3]]
+                            # print ("the detection coordinate is {}".format(detection_coordinate))
+                            detection_coordinate = np.array(detection_coordinate, dtype=np.float32)
+                            detection_coordinate = epfl_calib.img_to_world(detection_coordinate, epfl_calib.terrace_H()[index])
+                            squared_distance = (detection_coordinate[0]-track_coordinate[0]) ** 2 + (detection_coordinate[1]-track_coordinate[1]) ** 2
+                            # if cost_matrix[i][j] < 0.05 and squared_distance <= 200:
+                            #     print ("potential match squared distance is {}, track_coordinate is {}, detection_coordinate is {}".format(squared_distance,track_coordinate,detection_coordinate)) 
+                            if cost_matrix[i][j] > self.matching_threshold or cost_matrix[i][j] + squared_distance / 1000 > world_viewer_threshold:
+                                cost_matrix[i][j] = 1e+5
+                            else:
+                                cost_matrix[i][j] += squared_distance / 1000
+
             # print (cost_matrix)
         return cost_matrix

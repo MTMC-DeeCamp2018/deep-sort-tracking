@@ -58,7 +58,7 @@ class Tracker:
         for track in self.tracks:
             track.predict(self.kf)
 
-    def update(self, detections,tracker_dic,global_id,global_track):
+    def update(self, detections,tracker_dic,global_id,global_track,world_viewer_threshold=None):
         """Perform measurement update and track management.
 
         Parameters
@@ -69,7 +69,7 @@ class Tracker:
         """
         # Run matching cascade.
         matches, unmatched_tracks, unmatched_detections,matches_c = \
-            self._match(detections,tracker_dic,self.camera_num,global_track, global_id)
+            self._match(detections,tracker_dic,self.camera_num,global_track, global_id,world_viewer_threshold)
 
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
@@ -103,16 +103,17 @@ class Tracker:
             np.asarray(features), np.asarray(targets), active_targets,self.index)
 
 
-    def _match(self, detections,tracker_dic,camera_num,global_track,global_id):
+    def _match(self, detections,tracker_dic,camera_num,global_track,global_id,world_viewer_threshold=None):
 
         def gated_metric(tracks, dets, track_indices, detection_indices, cross_camera = False):
             # print ("detection_indices is {}".format(detection_indices))
             features = np.array([dets[i].feature for i in detection_indices])
+            coordinates = np.array([dets[i].tlwh for i in detection_indices])
             if cross_camera == True:
                 targets = np.array([tracks[i].global_id for i in track_indices])
             else:
                 targets = np.array([tracks[i].track_id for i in track_indices])
-            cost_matrix = self.metric.distance(features, targets,self.index,cross_camera,global_track,global_id, tracker_dic)
+            cost_matrix = self.metric.distance(features, coordinates, targets,self.index,cross_camera,global_track,global_id, tracker_dic,world_viewer_threshold)
             if cross_camera == False:
                 cost_matrix = linear_assignment.gate_cost_matrix(
                     self.kf, cost_matrix, tracks, dets, track_indices,
@@ -131,7 +132,7 @@ class Tracker:
                 gated_metric, self.metric.matching_threshold, self.max_age,
                 self.tracks, detections,confirmed_tracks, None,tracker_dic,self.index,camera_num,global_track)
         # print ("initial matches are {} unmatched tracks_a are {}, unmatched_detections are {}".format(matches_a,unmatched_tracks_a,unmatched_detections))
-        print ("initial matches are {}".format(matches_a))
+        # print ("initial matches are {}".format(matches_a))
         iou_track_candidates = unconfirmed_tracks + [
             k for k in unmatched_tracks_a if
             self.tracks[k].time_since_update == 1]
@@ -148,14 +149,14 @@ class Tracker:
         matches = matches_a + matches_b
         unmatched_tracks = list(set(unmatched_tracks_a + unmatched_tracks_b))
         matches_c = []
-        print ("second matches are {}".format(matches_b))
+        # print ("second matches are {}".format(matches_b))
         if camera_num > 1 and len(unmatched_detections) > 0:
             matches_c, unmatched_detections_c = linear_assignment.cross_camera_matching(gated_metric, self.metric.matching_threshold, global_track, detections,global_id,unmatched_detections)
             unmatched_detections = list(set(unmatched_detections)-set([i[1] for i in matches_c]))
 
             matches_detections = [i[1] for i in matches]
             matches_c = [i for i in matches_c if i[1] not in matches_detections]
-            print ("cross_camera match is {}".format(matches_c))
+            # print ("cross_camera match is {}".format(matches_c))
         return matches, unmatched_tracks, unmatched_detections, matches_c
 
     def _initiate_track(self, detection,global_track,global_id):

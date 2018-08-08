@@ -5,7 +5,7 @@ This module contains an image viewer and drawing routines based on OpenCV.
 import numpy as np
 import cv2
 import time
-
+from PIL import Image
 
 def is_in_bounds(mat, roi):
     """Check if ROI is fully contained in the image.
@@ -304,13 +304,17 @@ class ImageViewer(object):
             t0 = time.time()
             numpy_horizontal = []
             image_concate = None
+            shape_ratio = self.image[0].shape[0] / self.image[0].shape[1]
+            # print ("shape ratio of the image is {}".format(shape_ratio))
             for i,image in enumerate(self.image):
                 if not is_paused:
                     self._terminate = not self._user_fun()
                     if self._video_writer is not None:
                         self._video_writer.write(
                             cv2.resize(image, self._window_shape))
-                image = cv2.resize(image, (0, 0), None, 0.8/len(self.image), 0.8/len(self.image))
+                # image = cv2.resize(image, (0, 0), None, 4/len(self.image), 4/len(self.image))
+                image = cv2.resize(image, (1400 // len(self.image), int(1400 * shape_ratio) // len(self.image)))
+
                 if i == 0:
                     image_concate = image
                 else:

@@ -144,7 +144,7 @@ def create_detections(detection_mat, frame_idx, camera_index, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display,video_dir=None,max_age=None):
+        nn_budget, display,video_dir=None,max_age=None,world_viewer_threshold=None):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -197,7 +197,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     results = []
 
     def video_frame_processing(vis,frame_idx, index, image):
-        print("Processing frame %05d" % frame_idx)
+        # print("Processing frame %05d" % frame_idx)
         frame_indices = seq_info_dic[index]["detections"][:, 0].astype(np.int)
         mask = frame_indices == frame_idx
         detection_list = []
@@ -213,7 +213,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             boxes, nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
         tracker_dic[index].predict()
-        tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
+        tracker_dic[index].update(detections,tracker_dic,global_id,global_track,world_viewer_threshold)
         if display:
             if index == 0:
                 vis.reset_image()
@@ -246,7 +246,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         # print ("the camera_index is {}, the coordiantes of detections is {}".format(index,[detection.tlwh for detection in detections]))
         # Update tracker.
         tracker_dic[index].predict()
-        tracker_dic[index].update(detections,tracker_dic,global_id,global_track)
+        tracker_dic[index].update(detections,tracker_dic,global_id,global_track,world_viewer_threshold)
 
         # Update visualization.
         if display:
@@ -304,13 +304,13 @@ def parse_args():
     parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
-        "disregarded", default=100, type=int)
+        "disregarded", default=0, type=int)
     parser.add_argument(
         "--nms_max_overlap",  help="Non-maxima suppression threshold: Maximum "
         "detection overlap.", default=1.0, type=float)
     parser.add_argument(
         "--max_cosine_distance", help="Gating threshold for cosine distance "
-        "metric (object appearance).", type=float, default=0.3)
+        "metric (object appearance).", type=float, default=0.2)
     parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
         "gallery. If None, no budget is enforced.", type=int, default=None)
@@ -321,6 +321,8 @@ def parse_args():
         "--video_dir", help="Path to camera video.", default=None)
     parser.add_argument(
         "--max_age", help="Maximum time interval for a pedestrian disappears.", default=500,type=int)
+    parser.add_argument(
+        "--world_viewer_threshold", help="Whether to use the world coordinate for multi-camera tracking and set the threshold for matching.", default=None, type=float)
     return parser.parse_args()
 
 
@@ -329,4 +331,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display,args.video_dir, args.max_age)
+        args.max_cosine_distance, args.nn_budget, args.display,args.video_dir, args.max_age, args.world_viewer_threshold)
