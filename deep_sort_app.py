@@ -193,11 +193,13 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     # print ("initial seq_info_dic is {}".format(seq_info_dic))
     for i in range(camera_num):
         tracker_dic[i] = Tracker(nn_matching.NearestNeighborDistanceMetric(
-        "cosine", max_cosine_distance, nn_budget),i,camera_num,max_age=max_age)
+        "euclidean", max_cosine_distance, nn_budget,world_viewer_threshold),i,camera_num,max_age=max_age)
     results = []
+    file = open("track.txt","w+")
+    tracking_file = open('tracking_id.txt', 'w+')
 
     def video_frame_processing(vis,frame_idx, index, image):
-        # print("Processing frame %05d" % frame_idx)
+        print("Processing frame %05d" % frame_idx)
         frame_indices = seq_info_dic[index]["detections"][:, 0].astype(np.int)
         mask = frame_indices == frame_idx
         detection_list = []
@@ -213,12 +215,18 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             boxes, nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
         tracker_dic[index].predict()
-        tracker_dic[index].update(detections,tracker_dic,global_id,global_track,world_viewer_threshold)
+        matching_results = tracker_dic[index].update(detections,tracker_dic,global_id,global_track,world_viewer_threshold)
+        for res in matching_results:
+            det = detections[res[1]]
+            tracking_file.write('{} {} {} {} {} {} {}\n'.format(
+            frame_idx, det.tlwh[0], det.tlwh[1], det.tlwh[2], det.tlwh[3], det.confidence, res[0]
+            ))
+            # tracking_file.flush()
         if display:
             if index == 0:
                 vis.reset_image()
             vis.append_image(image.copy())
-            vis.draw_trackers(tracker_dic[index].tracks,index)
+            vis.draw_trackers(tracker_dic[index].tracks,index,frame_idx,file)
         # Store results.
         # for i in range(camera_num):
         #     for track in tracker_dic[i].tracks:
@@ -255,7 +263,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             image = cv2.imread(
                 seq_info_dic[index]["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
             vis.append_image(image.copy())
-            vis.draw_trackers(tracker_dic[index].tracks,index)
+            vis.draw_trackers(tracker_dic[index].tracks,index,frame_idx)
         # Store results.
         # for i in range(camera_num):
         #     for track in tracker_dic[i].tracks:

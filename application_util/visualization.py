@@ -161,7 +161,7 @@ class Visualization(object):
             self.viewer.rectangle(*detection.tlwh,index)
             # print(*detection.tlwh) 
 
-    def draw_trackers(self, tracks,index):
+    def draw_trackers(self, tracks,index,frame_idx,file=None):
         self.viewer.thickness = 2
         for track in tracks:
             # print ("the feature of current track is {}".format(track.features))
@@ -172,15 +172,36 @@ class Visualization(object):
                 track.trace.pop(0)
             bbox = track.to_tlwh()
             coordinate = [bbox[0]+bbox[2]/2, bbox[1]+bbox[3]]
-            # world_coordinate = np.array(coordinate, dtype=np.float32)
-            # world_coordinate = epfl_calib.img_to_world(world_coordinate, epfl_calib.terrace_H()[index])
+            world_coordinate = np.array(coordinate, dtype=np.float32)
+            world_coordinate = epfl_calib.img_to_world(world_coordinate, epfl_calib.terrace_H()[index])
+            if file:
+                line = ("{} {} {} {}\n".format(frame_idx,track.global_id,world_coordinate[0],world_coordinate[1]))
+                line = line.replace("[","")
+                line = line.replace("]","")
+                file.write(line)
+            # if len(track.trace) >= 1:
+                # world_coordinate_prev = np.array(track.trace[-1], dtype=np.float32)
+                # world_coordinate_prev = epfl_calib.img_to_world(world_coordinate_prev, epfl_calib.terrace_H()[index])
+
+                # world_coordinate_prev = track.trace[-1]
+                # squared_distance = (world_coordinate[0]-world_coordinate_prev[0]) ** 2 + (world_coordinate[1]-world_coordinate_prev[1]) ** 2
+                # print ("the coordinate diff is {}".format(squared_distance))
+
             # print ("camera_index is {}, global_track_id is {}, world_coordinate is {}".format(index,track.global_id,world_coordinate))
-            track.trace.append(coordinate)
+            # track.trace.append(coordinate)
+            track.trace.append(world_coordinate)
+            # if len(track.features) > 0:
+            #     a = np.asarray(track.features[-1]) / np.linalg.norm(track.features[-1], axis=1, keepdims=True)
+            #     b = np.asarray(track.features[-2]) / np.linalg.norm(track.features[-2], axis=1, keepdims=True)
+            # print("the feature diff for the same person is {}".format(1. - np.dot(a, b.T)))
             self.viewer.color = create_unique_color_uchar(track.global_id)
             # for trace in track.trace:
                 # self.viewer.circle(index, trace[0], trace[1], 2)
             self.viewer.rectangle(
                 *track.to_tlwh().astype(np.int), index,label=str(track.global_id))
+        for i, track in enumerate(tracks):
+            if len(track.trace) > 0:
+                print ("camera index is {}, global_id is {}, track is {}".format(index,i,track.trace[-1]))
 
 
 #           

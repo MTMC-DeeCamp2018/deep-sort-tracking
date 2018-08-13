@@ -55,11 +55,8 @@ def min_cost_matching(
     cost_matrix = distance_metric(
         tracks, detections, track_indices, detection_indices)
     cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
-    # if multicamera == False:
-    #     cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
     indices = linear_assignment(cost_matrix)
-    # print (cost_matrix)
-    # print (indices)
+    # print ("cost_matrix is {}, indices is {}".format(cost_matrix,indices))
     matches, unmatched_tracks, unmatched_detections = [], [], []
     for col, detection_idx in enumerate(detection_indices):
         if col not in indices[:, 1]:
@@ -79,7 +76,11 @@ def min_cost_matching(
 
 
 def cross_camera_matching(distance_metric, max_distance, global_track, detections,global_id,
-    detection_indices=None):
+    detection_indices=None,world_viewer_threshold=None):
+    if world_viewer_threshold:
+        world_viewer_threshold += max_distance
+    else:
+        world_viewer_threshold = max_distance
     if detection_indices is None:
         detection_indices = np.arange(len(detections))
     track_indices = np.arange(len(global_track))
@@ -95,7 +96,7 @@ def cross_camera_matching(distance_metric, max_distance, global_track, detection
     for row, col in indices:
         track_idx = track_indices[row]
         detection_idx = detection_indices[col]
-        if cost_matrix[row, col] > max_distance:
+        if cost_matrix[row, col] > world_viewer_threshold:
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))

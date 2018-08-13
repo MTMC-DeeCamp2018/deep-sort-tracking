@@ -37,7 +37,7 @@ class Tracker:
 
     """
 
-    def __init__(self, metric, index=0,camera_num=1,max_iou_distance=0.7, max_age=30, n_init=0):
+    def __init__(self, metric, index=0,camera_num=1,max_iou_distance=0.7, max_age=500, n_init=0):
         self.metric = metric
         self.max_iou_distance = max_iou_distance
         self.max_age = max_age
@@ -68,12 +68,14 @@ class Tracker:
 
         """
         # Run matching cascade.
+        matching_results = []
         matches, unmatched_tracks, unmatched_detections,matches_c = \
             self._match(detections,tracker_dic,self.camera_num,global_track, global_id,world_viewer_threshold)
 
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
                 self.kf, detections[detection_idx])
+            matching_results.append([self.tracks[track_idx].global_id, detection_idx])
         for global_track_idx, detection_idx in matches_c:
             mean, covariance = self.kf.initiate(detections[detection_idx].to_xyah())
             track = Track(mean, covariance,self._next_id,self.n_init, self.max_age,global_track_idx,self.index,
@@ -86,6 +88,7 @@ class Tracker:
         for track_idx in unmatched_tracks:
             self.tracks[track_idx].mark_missed()
         for detection_idx in unmatched_detections:
+            matching_results.append([global_id[0], detection_idx])
             self._initiate_track(detections[detection_idx],global_track,global_id)
         self.tracks = [t for t in self.tracks if not t.is_deleted()]
 
@@ -101,6 +104,7 @@ class Tracker:
             # track.features = []
         self.metric.partial_fit(
             np.asarray(features), np.asarray(targets), active_targets,self.index)
+        return matching_results
 
 
     def _match(self, detections,tracker_dic,camera_num,global_track,global_id,world_viewer_threshold=None):
@@ -113,12 +117,12 @@ class Tracker:
                 targets = np.array([tracks[i].global_id for i in track_indices])
             else:
                 targets = np.array([tracks[i].track_id for i in track_indices])
-            cost_matrix = self.metric.distance(features, coordinates, targets,self.index,cross_camera,global_track,global_id, tracker_dic,world_viewer_threshold)
+            cost_matrix = self.metric.distance(features, coordinates, targets,self.index,cross_camera,global_track,global_id, tracker_dic)
             if cross_camera == False:
                 cost_matrix = linear_assignment.gate_cost_matrix(
                     self.kf, cost_matrix, tracks, dets, track_indices,
                     detection_indices)
-            # print ("cost_matrix is {}".format(cost_matrix))
+            print ("cost_matrix is {}, track_indices are {}, detection_indices are {}".format(cost_matrix,track_indices,detection_indices))
             return cost_matrix
 
         # Split track set into confirmed and unconfirmed tracks.
@@ -151,7 +155,7 @@ class Tracker:
         matches_c = []
         # print ("second matches are {}".format(matches_b))
         if camera_num > 1 and len(unmatched_detections) > 0:
-            matches_c, unmatched_detections_c = linear_assignment.cross_camera_matching(gated_metric, self.metric.matching_threshold, global_track, detections,global_id,unmatched_detections)
+            matches_c, unmatched_detections_c = linear_assignment.cross_camera_matching(gated_metric, self.metric.matching_threshold, global_track, detections,global_id,unmatched_detections,world_viewer_threshold)
             unmatched_detections = list(set(unmatched_detections)-set([i[1] for i in matches_c]))
 
             matches_detections = [i[1] for i in matches]
@@ -169,6 +173,6 @@ class Tracker:
         self.track_dic[self._next_id] = track
         self._next_id += 1
         global_track.append(track)
-        # print ("global count is {}".format(global_id[0]))
+        # print ("global count is {}, len of global_track is {}".format(global_id[0],len(global_track)))
         global_id[0] = global_id[0]+1
 

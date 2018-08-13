@@ -3,7 +3,7 @@ import numpy as np
 from . import epfl_calib
 
 
-def _pdist(a, b):
+def _pdist(a, b,data_is_normalized=False):
     """Compute pair-wise squared distance between points in `a` and `b`.
 
     Parameters
@@ -23,6 +23,9 @@ def _pdist(a, b):
     a, b = np.asarray(a), np.asarray(b)
     if len(a) == 0 or len(b) == 0:
         return np.zeros((len(a), len(b)))
+    if not data_is_normalized:
+        a = np.asarray(a) / np.linalg.norm(a, axis=1, keepdims=True)
+        b = np.asarray(b) / np.linalg.norm(b, axis=1, keepdims=True)
     a2, b2 = np.square(a).sum(axis=1), np.square(b).sum(axis=1)
     r2 = -2. * np.dot(a, b.T) + a2[:, None] + b2[None, :]
     r2 = np.clip(r2, 0., float(np.inf))
@@ -49,9 +52,9 @@ def _cosine_distance(a, b, data_is_normalized=False):
         contains the squared distance between `a[i]` and `b[j]`.
 
     """
-    # if not data_is_normalized:
-    #     a = np.asarray(a) / np.linalg.norm(a, axis=1, keepdims=True)
-    #     b = np.asarray(b) / np.linalg.norm(b, axis=1, keepdims=True)
+    if not data_is_normalized:
+        a = np.asarray(a) / np.linalg.norm(a, axis=1, keepdims=True)
+        b = np.asarray(b) / np.linalg.norm(b, axis=1, keepdims=True)
     return 1. - np.dot(a, b.T)
 
 
@@ -121,7 +124,7 @@ class NearestNeighborDistanceMetric(object):
 
     """
 
-    def __init__(self, metric, matching_threshold, budget=None):
+    def __init__(self, metric, matching_threshold, budget=None,world_viewer_threshold=None):
 
 
         if metric == "euclidean":
@@ -132,6 +135,7 @@ class NearestNeighborDistanceMetric(object):
             raise ValueError(
                 "Invalid metric; must be either 'euclidean' or 'cosine'")
         self.matching_threshold = matching_threshold
+        self.world_viewer_threshold = world_viewer_threshold
         self.budget = budget
         self.samples = {}
 
@@ -160,7 +164,7 @@ class NearestNeighborDistanceMetric(object):
         self.samples[index] = {k: self.samples[index][k] for k in active_targets}
         # print ("current samples are {}".format(self.samples[index]))
 
-    def distance(self, features, coordinates,targets,index,cross_camera,global_track,global_id, tracker_dic,world_viewer_threshold=None):
+    def distance(self, features, coordinates,targets,index,cross_camera,global_track,global_id, tracker_dic):
         """Compute distance between features and targets.
 
         Parameters
@@ -184,28 +188,31 @@ class NearestNeighborDistanceMetric(object):
                 cost_matrix[i, :] = self._metric(self.samples[index][target], features)
         else:
             cost_matrix = np.zeros((global_id[0], len(features)))
-            global_samples = [None]*len(targets)
             for i in range(global_id[0]):
                 if global_track[i].camera_index == index or i in tracker_dic[index].track_global_dic and tracker_dic[index].track_global_dic[i].is_confirmed():
                     cost_matrix[i,:] = 1e+5
                 else:
                     cost_matrix[i,:] = self._metric(global_track[i].features, features)
-                    if world_viewer_threshold:
+                    # print ("the cost matrix is {}".format(cost_matrix[i,:]))
+                    if self.world_viewer_threshold:
                         track_coordinate = global_track[i].trace[-1]
-                        track_coordinate = np.array(track_coordinate, dtype=np.float32)
-                        track_coordinate = epfl_calib.img_to_world(track_coordinate, epfl_calib.terrace_H()[global_track[i].camera_index])
+                        # track_coordinate = np.array(track_coordinate, dtype=np.float32)
+                        # track_coordinate = epfl_calib.img_to_world(track_coordinate, epfl_calib.terrace_H()[global_track[i].camera_index])
                         for j in range(len(coordinates)):
                             detection_coordinate = [coordinates[j][0]+coordinates[j][2]/2, coordinates[j][1]+coordinates[j][3]]
                             # print ("the detection coordinate is {}".format(detection_coordinate))
                             detection_coordinate = np.array(detection_coordinate, dtype=np.float32)
                             detection_coordinate = epfl_calib.img_to_world(detection_coordinate, epfl_calib.terrace_H()[index])
+                            print ("track_coordinate is {}, detection_coordinate is {}".format(track_coordinate,detection_coordinate))
                             squared_distance = (detection_coordinate[0]-track_coordinate[0]) ** 2 + (detection_coordinate[1]-track_coordinate[1]) ** 2
-                            # if cost_matrix[i][j] < 0.05 and squared_distance <= 200:
-                            #     print ("potential match squared distance is {}, track_coordinate is {}, detection_coordinate is {}".format(squared_distance,track_coordinate,detection_coordinate)) 
-                            if cost_matrix[i][j] > self.matching_threshold or cost_matrix[i][j] + squared_distance / 1000 > world_viewer_threshold:
+                            print ("camera index is {},track id is {}, detection id is {},potential match squared distance is {}, the cost matrix is {}, total is {}".format(index,i,j,squared_distance,cost_matrix[i][j],cost_matrix[i][j] + squared_distance / 10000)) 
+                            if cost_matrix[i][j] > self.matching_threshold or squared_distance / 10000 > self.world_viewer_threshold:
                                 cost_matrix[i][j] = 1e+5
                             else:
-                                cost_matrix[i][j] += squared_distance / 1000
+                                # print("cost matrix entry is {}".format(cost_matrix[i][j]))
+                                cost_matrix[i][j] = cost_matrix[i][j] + squared_distance / 10000
+                                # cost_matrix[i][j] = squared_distance / 10000
+                                # print (cost_matrix[i][j])
 
             # print (cost_matrix)
         return cost_matrix
